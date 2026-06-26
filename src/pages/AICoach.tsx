@@ -30,7 +30,22 @@ export default function AICoach() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [usage, setUsage] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const savedUsage = localStorage.getItem('4xlifeai_coach_usage');
+    const savedDate = localStorage.getItem('4xlifeai_coach_date');
+    const today = new Date().toDateString();
+
+    if (savedDate !== today) {
+        localStorage.setItem('4xlifeai_coach_date', today);
+        localStorage.setItem('4xlifeai_coach_usage', '0');
+        setUsage(0);
+    } else if (savedUsage) {
+        setUsage(parseInt(savedUsage, 10));
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,6 +57,17 @@ export default function AICoach() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
+
+    if (usage >= 4) {
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '**Limit Reached**: You have used your 4/4 asks for today. Please upgrade your plan for unlimited AI coaching.'
+      }]);
+      setInput('');
+      scrollToBottom();
+      return;
+    }
 
     const userInput = input.trim();
     const userMessage: Message = {
@@ -73,6 +99,10 @@ export default function AICoach() {
             content: data.text
         };
         setMessages(prev => [...prev, aiMessage]);
+        
+        const newUsage = usage + 1;
+        setUsage(newUsage);
+        localStorage.setItem('4xlifeai_coach_usage', newUsage.toString());
       } else {
         let errorContent = data.error || 'Failed to connect to AI server.';
         if (typeof errorContent === 'string' && errorContent.includes('{')) {
@@ -137,7 +167,7 @@ export default function AICoach() {
                     </span>
                     <span className="text-[#202735]">•</span>
                     <span className="text-[#8A95A5] flex items-center gap-1 bg-[#202735]/50 px-2 py-0.5 rounded">
-                       <User className="w-3 h-3" /> Usage: 0/4 Ask
+                       <User className="w-3 h-3" /> Usage: {usage}/4 Ask
                     </span>
                 </div>
              </div>
