@@ -48,7 +48,7 @@ export interface Signal {
   rejection_reason?: string;
   is_active?: boolean;
   diagnostics?: any;
-  result?: 'WIN' | 'LOSS' | 'BREAKEVEN' | 'OPEN';
+  result?: 'WIN' | 'PARTIAL WIN' | 'LOSS' | 'BREAKEVEN' | 'OPEN';
   pips_won?: number;
   pips_lost?: number;
   closed_at?: string;

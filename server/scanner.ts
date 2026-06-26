@@ -151,6 +151,8 @@ function updatePairStatus(pair: string, status: 'scanning' | 'success' | 'error'
   }
 }
 
+const htfCache = new Map<string, { data: any, timestamp: number }>();
+
 export async function startScanner() {
   console.log("Starting 24/7 4xLifeAI Scanner...");
 
@@ -225,11 +227,34 @@ export async function startScanner() {
         throw new Error('Live data unavailable — retrying next cycle');
       }
 
-      // We now need 4h and 5min candles
-      const htf = await fetchCandles(pair, '4h');
-      // Delay slightly between calls to respect rate limits if needed
-      await new Promise(r => setTimeout(r, 1500));
-      const setup = await fetchCandles(pair, '5min');
+      // We now need 4h and 5min candles (with 4H caching)
+      let htf = null;
+      const cachedHtf = htfCache.get(pair);
+      
+      // Cache valid for 4 hours (4 * 60 * 60 * 1000 ms)
+      if (cachedHtf && (Date.now() - cachedHtf.timestamp < 4 * 60 * 60 * 1000)) {
+         htf = cachedHtf.data;
+      } else {
+         htf = await fetchCandles(pair, '4h');
+         if (htf) htfCache.set(pair, { data: htf, timestamp: Date.now() });
+         // Delay slightly between API calls to respect rate limits ONLY if we made a 4H request
+         await new Promise(r => setTimeout(r, 1500));
+      }
+      
+      let setupPromise = fetchCandles(pair, '5min');
+      let activeSignalsPromise: any = null;
+      
+      if (supabase) {
+          activeSignalsPromise = supabase
+            .from('signals')
+            .select('*')
+            .eq('pair', pair)
+            .eq('is_active', true)
+            .in('status', ['ACTIVE', 'TP1 HIT', 'TP2 HIT'])
+            .or('result.is.null,result.eq.OPEN') as any;
+      }
+      
+      const [setup, supabaseResponse] = await Promise.all([setupPromise, activeSignalsPromise]);
       
       const entryTf = setup; // Compatibility for now
 
@@ -242,13 +267,8 @@ export async function startScanner() {
         try {
           const currentPrice = entryTf[entryTf.length - 1]; 
           
-          const { data: activeSignals, error: fetchSignalsError } = await supabase
-            .from('signals')
-            .select('*')
-            .eq('pair', pair)
-            .eq('is_active', true)
-            .in('status', ['ACTIVE', 'TP1 HIT', 'TP2 HIT'])
-            .or('result.is.null,result.eq.OPEN');
+          const activeSignals = supabaseResponse?.data;
+          const fetchSignalsError = supabaseResponse?.error;
 
           if (fetchSignalsError) {
             console.error("Supabase active signals fetch error:", fetchSignalsError.message);
@@ -272,11 +292,19 @@ export async function startScanner() {
           
               const isLong = s.direction === 'LONG' || s.signal === 'BUY';
 
+              // Determine current effective SL based on trailing logic
+              let effectiveSL = s.sl;
+              if (s.status === 'TP2 HIT') {
+                  effectiveSL = s.tp1;
+              } else if (s.status === 'TP1 HIT') {
+                  effectiveSL = sEntry;
+              }
+
               if (isLong) {
-                 if (currentPrice.low <= s.sl) {
+                 if (currentPrice.low <= effectiveSL) {
                     isHit = true; finalClose = true;
-                    hitLevel = 'SL'; hitPrice = s.sl; newStatus = 'CLOSED';
-                    rawPips = calculatePips(sEntry, s.sl);
+                    hitLevel = 'SL'; hitPrice = effectiveSL; newStatus = 'CLOSED';
+                    rawPips = calculatePips(sEntry, effectiveSL);
                  } else if (currentPrice.high >= s.tp3 && s.status !== 'TP3 HIT') {
                     isHit = true; finalClose = true;
                     hitLevel = 'TP3'; hitPrice = s.tp3; newStatus = 'CLOSED'; tpRecordStr = 'tp3_hit_at';
@@ -291,10 +319,10 @@ export async function startScanner() {
                     rawPips = calculatePips(s.tp1, sEntry);
                  }
               } else { 
-                 if (currentPrice.high >= s.sl) {
+                 if (currentPrice.high >= effectiveSL) {
                     isHit = true; finalClose = true;
-                    hitLevel = 'SL'; hitPrice = s.sl; newStatus = 'CLOSED';
-                    rawPips = calculatePips(sEntry, s.sl);
+                    hitLevel = 'SL'; hitPrice = effectiveSL; newStatus = 'CLOSED';
+                    rawPips = calculatePips(sEntry, effectiveSL);
                  } else if (currentPrice.low <= s.tp3 && s.status !== 'TP3 HIT') {
                     isHit = true; finalClose = true;
                     hitLevel = 'TP3'; hitPrice = s.tp3; newStatus = 'CLOSED'; tpRecordStr = 'tp3_hit_at';
@@ -318,8 +346,8 @@ export async function startScanner() {
                  if (finalClose) {
                      if (hitLevel === 'TP3') finalResult = 'WIN';
                      else if (hitLevel === 'SL') {
-                         if (s.status === 'TP2 HIT') finalResult = 'WIN';
-                         else if (s.status === 'TP1 HIT') finalResult = 'PARTIAL WIN';
+                         if (s.status === 'TP2 HIT') finalResult = 'PARTIAL WIN';
+                         else if (s.status === 'TP1 HIT') finalResult = 'BREAKEVEN';
                          else finalResult = 'LOSS';
                      }
                  } else {
@@ -330,9 +358,12 @@ export async function startScanner() {
                  let titleText = `4XLIFEAI — ${hitLevel} HIT`;
                  let statusLine = '';
                  if (hitLevel === 'SL') {
-                     if (finalResult === 'WIN' || finalResult === 'PARTIAL WIN') {
+                     if (finalResult === 'PARTIAL WIN') {
                          headerEmoji = '✅';
                          titleText = '4XLIFEAI — BREAKEVEN+ LOCKED IN';
+                     } else if (finalResult === 'BREAKEVEN') {
+                         headerEmoji = '🛡️';
+                         titleText = '4XLIFEAI — STOPPED AT BREAKEVEN';
                      } else {
                          headerEmoji = '🛑';
                          titleText = '4XLIFEAI — STOP LOSS HIT';
@@ -346,10 +377,11 @@ export async function startScanner() {
                      statusLine = '\n\nStatus: TRADE CLOSED';
                  }
 
-                 const isWinOutcome = finalResult === 'WIN' || finalResult === 'PARTIAL WIN' || hitLevel !== 'SL';
-                 const resultEmoji = isWinOutcome ? '✅' : '❌';
-                 const sign = isWinOutcome ? '+' : '-';
-                 const pipStr = Math.abs(rawPips).toFixed(1);
+                 const isWinOutcome = finalResult === 'WIN' || finalResult === 'PARTIAL WIN' || (hitLevel !== 'SL' && finalResult !== 'BREAKEVEN');
+                 const isBreakevenOutcome = finalResult === 'BREAKEVEN';
+                 const resultEmoji = isWinOutcome ? '✅' : (isBreakevenOutcome ? '🛡️' : '❌');
+                 const sign = isWinOutcome ? '+' : (isBreakevenOutcome ? '' : '-');
+                 const pipStr = isBreakevenOutcome ? '0.0' : Math.abs(rawPips).toFixed(1);
                  
                  const directionStr = isLong ? 'BUY' : 'SELL';
                  const hitMsg = `${headerEmoji} <b>${titleText}</b>\n\n`
@@ -377,12 +409,13 @@ export async function startScanner() {
                      const tp3Status = (hitLevel === 'TP3') ? 'HIT ✅' : 'MISSED ❌';
                      
                      const isWin = finalResult === 'WIN' || finalResult === 'PARTIAL WIN';
-                     const totalPips = isWin ? `+${pipStr}` : `-${pipStr}`;
-                     const summaryEmoji = isWin ? '🟢' : '🔴';
+                     const isBreakeven = finalResult === 'BREAKEVEN';
+                     const totalPips = isWin ? `+${pipStr}` : (isBreakeven ? `0.0` : `-${pipStr}`);
+                     const summaryEmoji = isWin ? '🟢' : (isBreakeven ? '🛡️' : '🔴');
                      
                      const riskPips = calculatePips(sEntry, s.sl) || 1; // avoid / 0
                      const rrRatio = (rawPips / riskPips).toFixed(1);
-                     const riskRewardStr = isWin ? `1:${rrRatio}` : `-1:1`;
+                     const riskRewardStr = isWin ? `1:${rrRatio}` : (isBreakeven ? '0:0' : `-1:1`);
                      
                      const summaryMsg = `📊 <b>4XLIFEAI — TRADE SUMMARY</b>\n\n`
                      + `Pair: ${pair}\n`
@@ -413,9 +446,13 @@ export async function startScanner() {
                      if (s.status !== 'TP1 HIT') updatePayload['tp1_hit_at'] = closedAt;
                  }
                  
-                 // Move SL to TP1 if TP1 or TP2 is hit for the first time
-                 if ((hitLevel === 'TP1' || hitLevel === 'TP2') && s.status === 'ACTIVE') {
-                     updatePayload.sl = s.tp1;
+                 // Update Trailing SL in DB
+                 if (!finalClose) {
+                     if (hitLevel === 'TP1') {
+                         updatePayload.sl = sEntry;
+                     } else if (hitLevel === 'TP2') {
+                         updatePayload.sl = s.tp1;
+                     }
                  }
                  
                  if (finalClose) {
@@ -429,47 +466,44 @@ export async function startScanner() {
                     }
                  }
                  
-                 // 1. Update signals table
-                 const { error: sigUpdateErr } = await supabase
-                   .from('signals')
-                   .update(updatePayload)
-                   .eq('id', s.id);
-                   
-                 if (sigUpdateErr) {
-                   if (sigUpdateErr.message.includes('Could not find') || sigUpdateErr.message.includes('schema cache')) {
-                       const safePayload = { ...updatePayload };
-                       delete safePayload['tp1_hit_at'];
-                       delete safePayload['tp2_hit_at'];
-                       delete safePayload['tp3_hit_at'];
-                       if (tpRecordStr) delete safePayload[tpRecordStr];
-                       delete safePayload.closed_at;
-                       
-                       const { error: safeErr } = await supabase.from('signals').update(safePayload).eq('id', s.id);
-                       if (safeErr) {
-                           console.error("Safe update for signals failed:", safeErr.message);
-                       }
-                   } else {
-                       console.error("Failed to update signals table:", sigUpdateErr.message);
-                   }
-                 }
+                 const updatePromises: any[] = [];
                  
-                 // 2. Update trades table
-                 const { error: tradesUpdateErr } = await supabase
-                   .from('trades')
-                   .update(updatePayload)
-                   .eq('id', s.id);
-                 if (tradesUpdateErr && !tradesUpdateErr.message.includes('Could not find')) {
-                     console.error("Failed to update trades table:", tradesUpdateErr.message);
-                 }
+                 updatePromises.push(
+                     supabase.from('signals').update(updatePayload).eq('id', s.id).then(({error}) => {
+                         if (error) {
+                             if (error.message.includes('Could not find') || error.message.includes('schema cache')) {
+                                 const safePayload = { ...updatePayload };
+                                 delete safePayload['tp1_hit_at'];
+                                 delete safePayload['tp2_hit_at'];
+                                 delete safePayload['tp3_hit_at'];
+                                 if (tpRecordStr) delete safePayload[tpRecordStr];
+                                 delete safePayload.closed_at;
+                                 
+                                 supabase.from('signals').update(safePayload).eq('id', s.id).then(({error: safeErr}) => {
+                                     if (safeErr) console.error("Safe update for signals failed:", safeErr.message);
+                                 });
+                             } else {
+                                 console.error("Failed to update signals table:", error.message);
+                             }
+                         }
+                     })
+                 );
+                 
+                 updatePromises.push(
+                     supabase.from('trades').update(updatePayload).eq('id', s.id).then(({error}) => {
+                         if (error && !error.message.includes('Could not find')) {
+                             console.error("Failed to update trades table:", error.message);
+                         }
+                     })
+                 );
 
-                 // Update active_opportunities
-                 const { error: activeOppsUpdateErr } = await supabase
-                   .from('active_opportunities')
-                   .update(updatePayload)
-                   .eq('id', s.id);
-                 if (activeOppsUpdateErr && !activeOppsUpdateErr.message.includes('Could not find')) {
-                     console.error("Failed to update active_opportunities table:", activeOppsUpdateErr.message);
-                 }
+                 updatePromises.push(
+                     supabase.from('active_opportunities').update(updatePayload).eq('id', s.id).then(({error}) => {
+                         if (error && !error.message.includes('Could not find')) {
+                             console.error("Failed to update active_opportunities table:", error.message);
+                         }
+                     })
+                 );
 
                  // Insert into trade_events
                  const eventsToInsert = [{
@@ -486,10 +520,15 @@ export async function startScanner() {
                         pips: rawPips
                     });
                  }
-                 const { error: teErr } = await supabase.from('trade_events').insert(eventsToInsert);
-                 if (teErr && !teErr.message.includes('Could not find') && !teErr.message.includes('schema cache')) {
-                     console.error("trade_events insert error:", teErr.message);
-                 }
+                 updatePromises.push(
+                     supabase.from('trade_events').insert(eventsToInsert).then(({error}) => {
+                         if (error && !error.message.includes('Could not find') && !error.message.includes('schema cache')) {
+                             console.error("trade_events insert error:", error.message);
+                         }
+                     })
+                 );
+                 
+                 await Promise.all(updatePromises);
               }
             }
           }

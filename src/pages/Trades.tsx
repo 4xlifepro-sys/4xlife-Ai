@@ -163,7 +163,8 @@ export default function Trades() {
                   {closedTrades.slice(0, 50).map((t: any) => {
                     const isLong = t.direction === 'LONG' || t.direction === 'BUY';
                     const isWin = t.result === 'WIN' || t.result === 'PARTIAL WIN';
-                    const pips = isWin ? (t.pips_won || 0) : -(t.pips_lost || 0);
+                    const isBreakeven = t.result === 'BREAKEVEN';
+                    const pips = isWin ? (t.pips_won || 0) : (isBreakeven ? 0 : -(t.pips_lost || 0));
                     
                     return (
                     <tr key={t.id} className="text-[#E0E4EA]">
@@ -175,19 +176,20 @@ export default function Trades() {
                        </td>
                        <td className="py-3 font-mono text-xs">{t.entry}</td>
                        <td className="py-3 font-mono text-xs text-right">
-                          {t.result === 'LOSS' ? t.sl : (t.tp3_hit_at ? t.tp3 : (t.tp2_hit_at ? t.tp2 : (t.tp1_hit_at ? t.tp1 : 'N/A')))}
+                          {t.result === 'LOSS' ? t.sl : (t.result === 'BREAKEVEN' ? t.entry : (t.tp3_hit_at ? t.tp3 : (t.tp2_hit_at ? t.tp2 : (t.tp1_hit_at ? t.tp1 : 'N/A'))))}
                        </td>
                        <td className="py-3 text-center">
                          <span className={cn("px-2 py-1 rounded text-xs font-bold", 
                             t.result === 'WIN' ? 'bg-green-500/10 text-green-400' : 
                              t.result === 'PARTIAL WIN' ? 'bg-blue-500/10 text-blue-400' : 
+                             t.result === 'BREAKEVEN' ? 'bg-[#8A95A5]/10 text-[#8A95A5]' : 
                              t.result === 'LOSS' ? 'bg-red-500/10 text-red-400' :
                              'bg-[#8A95A5]/10 text-[#8A95A5]'
                          )}>
                             {t.result || 'CLOSED'}
                          </span>
                        </td>
-                       <td className={cn("py-3 text-right font-mono text-xs", pips >= 0 ? "text-green-400" : "text-red-400")}>
+                       <td className={cn("py-3 text-right font-mono text-xs", pips > 0 ? "text-green-400" : (pips < 0 ? "text-red-400" : "text-[#8A95A5]"))}>
                           {pips > 0 ? '+' : ''}{pips.toFixed(1)}
                        </td>
                        <td className="py-3 text-right text-[#8A95A5] font-mono text-xs">
