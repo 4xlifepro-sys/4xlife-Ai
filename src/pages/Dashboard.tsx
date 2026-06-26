@@ -272,13 +272,13 @@ export default function Dashboard() {
   const displaySignals = filteredSignals.slice(0, 100);
 
   const rejectionData = [
-    { name: "ACTIVE TRADE EXISTS", value: rejectionStats["ACTIVE_TRADE_EXISTS"] || 0 },
-    { name: "VOLATILITY LOW", value: rejectionStats["ATR_LOW"] || 0 },
-    { name: "MOMENTUM MISMATCH", value: rejectionStats["MOMENTUM"] || 0 },
-    { name: "MOMENTUM EXHAUSTION", value: rejectionStats["STOCHASTIC"] || 0 },
-    { name: "TREND CONFLICT", value: rejectionStats["VWAP"] || 0 },
-    { name: "TREND FLAT", value: rejectionStats["EMA_FLAT"] || 0 },
-    { name: "COUNTER TREND", value: rejectionStats["COUNTER_TREND"] || 0 },
+    { name: "POSITION ACTIVE", value: rejectionStats["ACTIVE_TRADE_EXISTS"] || 0 },
+    { name: "RANGE COMPRESSION", value: rejectionStats["ATR_LOW"] || 0 },
+    { name: "SIGNAL CONFLICT", value: rejectionStats["MOMENTUM"] || 0 },
+    { name: "SIGNAL FADE", value: rejectionStats["STOCHASTIC"] || 0 },
+    { name: "DIRECTION LOCK", value: rejectionStats["VWAP"] || 0 },
+    { name: "TREND COMPRESSION", value: rejectionStats["EMA_FLAT"] || 0 },
+    { name: "REVERSAL BLOCK", value: rejectionStats["COUNTER_TREND"] || 0 },
   ].sort((a, b) => b.value - a.value);
 
   const defaultPairs = ["EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "GBPAUD", "AUDNZD", "CADJPY", "CHFJPY", "EURNZD", "GBPNZD", "NZDJPY", "XAUUSD"];
@@ -318,7 +318,7 @@ export default function Dashboard() {
             <span className="text-[#F5A524]">{duplicateCount}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#8A95A5]">API:</span>
+            <span className="text-[#8A95A5]">ENGINE API:</span>
             <span className={stats.consecutiveApiErrors > 0 ? "text-[#FF4D6D]" : "text-[#00E08A]"}>
               {stats.consecutiveApiErrors > 0 ? "ERR" : "OK"}
             </span>
@@ -695,7 +695,9 @@ export default function Dashboard() {
             <div className="bg-[#0D1017] border border-[#1A2332] p-3 flex flex-col rounded-sm">
                <div className="flex items-center justify-between mb-2">
                  <span className="text-[#8A95A5] block text-[10px] uppercase font-sans tracking-widest">FILTER ANALYTICS</span>
-                 <span className="text-[#FF4D6D] text-[10px] font-mono border border-[#FF4D6D]/20 bg-[#FF4D6D]/10 px-1 rounded-sm">PRI: {primaryRej}</span>
+                 <span className="text-[#FF4D6D] text-[10px] font-mono border border-[#FF4D6D]/20 bg-[#FF4D6D]/10 px-1 rounded-sm">
+                   {primaryRej === "EMA_FLAT" ? "MODE: 4X-FILTER" : `PRI: ${primaryRej === "ATR_LOW" ? "RANGE COMPRESSION" : primaryRej === "MOMENTUM" ? "SIGNAL CONFLICT" : primaryRej === "STOCHASTIC" ? "SIGNAL FADE" : primaryRej === "VWAP" ? "DIRECTION LOCK" : primaryRej === "COUNTER_TREND" ? "REVERSAL BLOCK" : primaryRej === "ACTIVE_TRADE_EXISTS" ? "POSITION ACTIVE" : primaryRej}`}
+                 </span>
                </div>
                <div className="flex flex-col gap-1.5 font-mono text-[10px]">
                   {rejectionData.map((item, i) => {
@@ -735,7 +737,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2">
                      <span className="text-[#5D6B80]">{timeStr(0)}</span>
                      <span className="text-[#00E08A]">[ OK ]</span>
-                     <span className="text-[#8A95A5]">429 Protection Active</span>
+                     <span className="text-[#8A95A5]">4X Rate Shield Active</span>
                   </div>
                   <div className="flex items-center gap-2">
                      <span className="text-[#5D6B80]">{timeStr(0)}</span>
@@ -765,7 +767,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2">
                      <span className="text-[#5D6B80]">{timeStr(0)}</span>
                      <span className="text-[#3B82F6]">[INFO]</span>
-                     <span className="text-[#8A95A5]">429 Recoveries: {stats.rateLimitRecoveries || 0}</span>
+                     <span className="text-[#8A95A5]">4X Shield Recoveries: {stats.rateLimitRecoveries || 0}</span>
                   </div>
                </div>
             </div>
