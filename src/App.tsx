@@ -22,6 +22,7 @@ import Support from './pages/Support';
 import Signals from './pages/Signals';
 import TodaySignals from './pages/TodaySignals';
 import LoadingScreen from './components/LoadingScreen';
+import { Logo } from './components/Logo';
 
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
@@ -81,14 +82,25 @@ function GlobalLayout() {
 
   return (
     <div className="min-h-screen bg-[#0A0D12] text-[#E0E4EA] font-sans antialiased flex flex-col">
+      {/* Top Banner with Developer Name */}
+      <div className="bg-[#05080E] border-b border-[#202735]/60 py-2.5 px-4 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-teal-500/5 to-blue-500/5 pointer-events-none" />
+        <p className="text-xs text-[#8A95A5] font-sans tracking-wider flex flex-wrap items-center justify-center gap-2 relative z-10">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-black text-[10px] uppercase tracking-widest border border-blue-500/20">
+            ★ LEAD DEVELOPER
+          </span>
+          <span className="font-semibold text-slate-300">System Engineered By</span>
+          <span className="text-white font-black text-sm tracking-widest uppercase hover:text-blue-400 transition-colors drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+            Tofik Mohammed
+          </span>
+        </p>
+      </div>
+
       <nav className="border-b border-[#202735] bg-[#11141A]/90 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-white tracking-tighter">
-                4<span className="text-blue-200">x</span>
-              </div>
-              <span className="font-semibold text-lg tracking-tight text-white">4xLifeAI</span>
+            <Link to={user ? "/dashboard" : "/"} className="flex items-center">
+              <Logo size={32} showText={true} />
             </Link>
             
             <div className="flex flex-1 justify-end min-w-0">
@@ -209,6 +221,32 @@ function GlobalLayout() {
           <Route path="/signals" element={<ProtectedRoute><Signals /></ProtectedRoute>} />
         </Routes>
       </main>
+
+      <footer className="border-t border-[#202735] bg-[#070A0F] py-8 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-3">
+              <Logo size={24} />
+              <span className="font-bold text-sm tracking-tight text-white font-sans">4xLifeAI</span>
+              <span className="text-xs text-[#5D6B80] border-l border-[#202735] pl-3">Institutional SMC Smart Engine</span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-xs text-[#8A95A5]">
+              <div>
+                System Lead Architect: <span className="text-blue-400 font-semibold">Tofik Mohammed</span>
+              </div>
+              <div className="hidden sm:block text-[#202735]">|</div>
+              <div>
+                Status: <span className="text-emerald-400 font-semibold">● ACTIVE NODE</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-[#5D6B80]">
+              &copy; 2026 4xLifeAI. All rights reserved.
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

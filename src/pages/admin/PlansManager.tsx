@@ -90,7 +90,7 @@ export default function PlansManager() {
     <div className="bg-[#0D101A] border border-rose-500/20 rounded-3xl p-8 shadow-sm">
       <div className="text-rose-400 mb-2 font-bold flex items-center gap-2"><X className="w-5 h-5"/> Error loading plans</div>
       <p className="text-[#8A95A5] text-sm">{errorMsg}</p>
-      <p className="text-[#8A95A5] text-sm mt-4">Please ensure the <code>plans</code> table has been created in your Supabase database.</p>
+      <p className="text-[#8A95A5] text-sm mt-4">Please ensure the <code>plans</code> table has been created in your 4x SecureDB database.</p>
     </div>
   );
 

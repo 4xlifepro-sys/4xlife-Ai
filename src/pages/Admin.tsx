@@ -483,7 +483,7 @@ export default function Admin() {
             <div className="text-emerald-400 text-sm font-bold tracking-wider">CONNECT</div>
           </div>
           <div className="bg-[#11141A] p-4 rounded-lg border border-[#202735]">
-            <div className="text-[#8A95A5] text-[10px] tracking-widest uppercase font-mono mb-2">Supabase</div>
+            <div className="text-[#8A95A5] text-[10px] tracking-widest uppercase font-mono mb-2">4x SecureDB</div>
             <div className={cn("text-sm font-bold tracking-wider", connectionStatus === 'error' ? "text-rose-400" : "text-emerald-400")}>
               {connectionStatus === 'error' ? 'DISCONNECT' : 'CONNECT'}
             </div>
@@ -667,9 +667,9 @@ export default function Admin() {
              <Database className="w-6 h-6 text-cyan-400" />
           </div>
           <div>
-            <h3 className="text-white text-md font-bold tracking-widest uppercase mb-1">Supabase Live Connection Monitor</h3>
+            <h3 className="text-white text-md font-bold tracking-widest uppercase mb-1">4x SecureDB Live Connection Monitor</h3>
             <p className="text-[#8A95A5] text-sm leading-relaxed max-w-2xl">
-              Inspect environment configurations, execute write/read testing and verify API reachability with the linked Supabase database.
+              Inspect environment configurations, execute write/read testing and verify API reachability with the linked 4x SecureDB database.
             </p>
           </div>
         </div>

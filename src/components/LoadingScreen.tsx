@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Logo } from './Logo';
 
 const messages = [
   "Connecting to live market feed...",
@@ -32,15 +33,9 @@ export default function LoadingScreen() {
         <motion.div 
           animate={{ scale: [0.98, 1.02, 0.98] }}
           transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-          className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center font-bold text-white tracking-tighter text-3xl mb-10 shadow-[0_0_40px_rgba(37,99,235,0.3)] relative overflow-hidden"
+          className="mb-10"
         >
-          <div className="relative z-10">4<span className="text-blue-200">x</span></div>
-          {/* Subtle shine effect over logo */}
-          <motion.div 
-             animate={{ x: ['-100%', '200%'] }}
-             transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-             className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg]"
-          />
+          <Logo size={64} />
         </motion.div>
 
         {/* Loading Bar Container */}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Mail, Lock, Loader2, Target, AlertCircle } from 'lucide-react';
 import { cn } from '../../App';
+import { Logo } from '../../components/Logo';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -68,8 +69,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         
         <div className="mb-8 text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center font-bold text-white tracking-tighter text-3xl mb-6 shadow-[0_0_40px_rgba(37,99,235,0.3)]">
-            4<span className="text-blue-200">x</span>
+          <div className="flex justify-center mb-6">
+            <Logo size={64} />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Welcome Back</h1>
           <p className="text-[#8A95A5]">Sign in to access the 4xLifeAI Engine</p>

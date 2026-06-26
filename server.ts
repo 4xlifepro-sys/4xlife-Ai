@@ -428,7 +428,7 @@ async function startServer() {
   };
 
   app.post("/api/payments", requireAuth, async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { email, network, txid } = req.body;
     
     // Ensure requester owns the data
@@ -447,7 +447,7 @@ async function startServer() {
   });
 
   app.get("/api/payments", requireAdmin, async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { data, error } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
     if (error && error.message.includes('find the table')) {
       return res.json(mockPayments);
@@ -457,7 +457,7 @@ async function startServer() {
   });
 
   app.get("/api/payments/:email/status", requireAuth, async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     
     const user = (req as any).user;
     const requestedEmail = req.params.email;
@@ -480,7 +480,7 @@ async function startServer() {
 
   // Referrals API
   app.get("/api/referrals", requireAuth, async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const user = (req as any).user;
     const email = user.email;
     
@@ -510,7 +510,7 @@ async function startServer() {
   });
 
   app.post("/api/referrals/claim", requireAuth, async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const user = (req as any).user;
     const email = user.email;
 
@@ -534,7 +534,7 @@ async function startServer() {
   });
 
   app.post("/api/support", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { user_id, email, subject, message } = req.body;
     
     // We embed email in the message so admin knows who it's from since table may lack email column
@@ -554,7 +554,7 @@ async function startServer() {
   app.use("/api/admin", requireAdmin);
 
   app.post("/api/admin/tickets/:id/mark-read", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { id } = req.params;
     const { error } = await supabase.from('support_tickets').update({ status: 'READ' }).eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
@@ -562,7 +562,7 @@ async function startServer() {
   });
 
   app.get("/api/admin/payouts", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { data, error } = await supabase.from('payout_requests').select('*').order('created_at', { ascending: false });
     if (error && error.message.includes('find the table')) {
        return res.json(mockPayouts.sort((a,b) => b.created_at.localeCompare(a.created_at)));
@@ -572,7 +572,7 @@ async function startServer() {
   });
 
   app.post("/api/admin/payouts/:id/mark-paid", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { data: payout, error: payoutError } = await supabase.from('payout_requests').select('*').eq('id', req.params.id).single();
     
     if (payoutError && payoutError.message.includes('find the table')) {
@@ -600,7 +600,7 @@ async function startServer() {
   });
 
   app.get("/api/admin/users", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const authUsersRes = await supabase.auth.admin.listUsers();
     if (authUsersRes.error) return res.status(500).json({ error: authUsersRes.error.message });
     
@@ -623,7 +623,7 @@ async function startServer() {
   });
 
   app.post("/api/admin/users/:id/plan", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { id } = req.params;
     const { plan } = req.body;
     const { data, error } = await supabase.from('profiles').update({ plan }).eq('id', id);
@@ -632,7 +632,7 @@ async function startServer() {
   });
 
   app.post("/api/admin/users/:id/delete", async (req, res) => {
-    if (!supabase) return res.status(500).json({ error: "Supabase not configured" });
+    if (!supabase) return res.status(500).json({ error: "4x System Error" });
     const { id } = req.params;
     const { data, error } = await supabase.auth.admin.deleteUser(id);
     if (error) return res.status(500).json({ error: error.message });
@@ -680,7 +680,7 @@ async function startServer() {
     }
 
     try {
-      if (!supabase) return res.status(500).json({ error: "Supabase not initialized" });
+      if (!supabase) return res.status(500).json({ error: "4x System Error" });
 
       const { data: profiles } = await supabase.from('profiles').select('id');
       if (!profiles || profiles.length === 0) return res.status(404).json({ error: "No user profiles found to send notifications to" });
