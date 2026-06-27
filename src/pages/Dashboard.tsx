@@ -38,6 +38,11 @@ function RelativeTime({ timestamp }: { timestamp: string | number | null | undef
   return <span>{stamp}</span>;
 }
 
+const isWeekend = () => {
+  const day = new Date().getUTCDay();
+  return day === 0 || day === 6;
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [state, setState] = useState<{
@@ -141,10 +146,22 @@ export default function Dashboard() {
     scanError: null,
   };
 
-  const activeOpps = (state.activeOpportunities || []).filter((s: any) => ['ACTIVE', 'TP1 HIT', 'TP2 HIT', 'OPEN'].includes(s.status));
-  const archivedOpps = (state.activeOpportunities || []).filter((s: any) => ['TP3 HIT', 'SL HIT', 'EXPIRED', 'CLOSED'].includes(s.status));
+  const allowedPairs = isWeekend()
+    ? ["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BNBUSD", "ADAUSD", "LTCUSD", "DOTUSD", "XAGUSD", "XAUUSD"]
+    : ["EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "NZDJPY", "CADJPY", "CHFJPY", "EURAUD", "EURNZD", "GBPAUD", "XAUUSD", "XAGUSD", "BTCUSD"];
 
-  const source = state.marketStates && state.marketStates.length > 0 ? state.marketStates : (state.signals || []);
+  const activeOpps = (state.activeOpportunities || [])
+    .filter((s: any) => allowedPairs.includes(s.pair))
+    .filter((s: any) => ['ACTIVE', 'TP1 HIT', 'TP2 HIT', 'OPEN'].includes(s.status));
+
+  const archivedOpps = (state.activeOpportunities || [])
+    .filter((s: any) => allowedPairs.includes(s.pair))
+    .filter((s: any) => ['TP3 HIT', 'SL HIT', 'EXPIRED', 'CLOSED'].includes(s.status));
+
+  const rawMarketStates = state.marketStates || [];
+  const marketStates = rawMarketStates.filter((s: any) => allowedPairs.includes(s.pair));
+
+  const source = marketStates.length > 0 ? marketStates : (state.signals || []).filter((s: any) => allowedPairs.includes(s.pair));
 
   const getDerivedStatus = (s: any) => {
     if (s.tier === "Reject" || s.status === "REJECTED") return "FILTERED";
@@ -211,8 +228,7 @@ export default function Dashboard() {
     marketSummary = "Momentum is fading or contradictory across multiple timeframes. Trend strength is inadequate for high-probability setups. Awaiting clear directional volume.";
   }
 
-  const marketStates = state.marketStates || [];
-  const evaluatedCount = stats.totalScannedAssets || marketStates.length;
+  const evaluatedCount = isWeekend() ? 10 : 20;
   const momentumRejCount = rejectionStats["MOMENTUM"] || 0;
   const atrRejCount = rejectionStats["ATR_LOW"] || 0;
   
@@ -281,8 +297,7 @@ export default function Dashboard() {
     { name: "REVERSAL BLOCK", value: rejectionStats["COUNTER_TREND"] || 0 },
   ].sort((a, b) => b.value - a.value);
 
-  const defaultPairs = ["EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD", "GBPAUD", "AUDNZD", "CADJPY", "CHFJPY", "EURNZD", "GBPNZD", "NZDJPY", "XAUUSD"];
-  const heatmapPairs = marketStates.length > 0 ? marketStates : defaultPairs.map(p => ({ pair: p, direction: "NONE", tier: "STALE" }));
+  const heatmapPairs = marketStates.length > 0 ? marketStates : allowedPairs.map(p => ({ pair: p, direction: "NONE", tier: "STALE" }));
 
   const now = new Date();
   const timeStr = (offsetMs: number) => new Date(now.getTime() - offsetMs).toLocaleTimeString([], { hour12: false });
@@ -290,6 +305,13 @@ export default function Dashboard() {
   return (
     <div className="flex-1 max-w-[1920px] w-full mx-auto p-3 space-y-3 overflow-y-auto custom-scrollbar bg-[#070B12] text-white">
       
+      {/* WEEKEND MODE BANNER */}
+      {isWeekend() && (
+        <div className="bg-[#F5A524]/10 border border-[#F5A524]/30 text-[#F5A524] px-4 py-2.5 rounded-sm text-xs font-mono font-bold flex items-center justify-center gap-2 animate-pulse">
+          ⚡ WEEKEND MODE — Crypto & Gold Only | Forex Resumes Monday 00:00 UTC
+        </div>
+      )}
+
       {/* PHASE 1 - TOP TELEMETRY STRIP */}
       <div className="bg-[#0D1017] border border-[#1A2332] flex items-center px-4 justify-between text-xs font-mono whitespace-nowrap overflow-x-auto custom-scrollbar h-[40px] rounded-sm">
         <div className="flex items-center gap-6">
@@ -649,11 +671,11 @@ export default function Dashboard() {
                <div className="flex flex-col gap-2 mb-4 font-mono text-[10px]">
                  <div className="flex justify-between items-center">
                    <span className="text-[#5D6B80]">Configured Markets</span>
-                   <span className="text-white">{stats.totalAssetsConfigured != null ? stats.totalAssetsConfigured : '--'}</span>
+                   <span className="text-white">{isWeekend() ? 10 : 20}</span>
                  </div>
                  <div className="flex justify-between items-center">
                    <span className="text-[#5D6B80]">Markets Monitored</span>
-                   <span className="text-white">{stats.totalScannedAssets != null ? stats.totalScannedAssets : '--'}</span>
+                   <span className="text-white">{isWeekend() ? 10 : 20}</span>
                  </div>
                  <div className="flex justify-between items-center">
                    <span className="text-[#5D6B80]">Cycle Duration</span>

@@ -90,12 +90,20 @@ async function updateSignalReason(dbId: string, signalId: string, text: string) 
     }
 }
 
+export const isWeekend = () => {
+  const day = new Date().getUTCDay()
+  return day === 0 || day === 6
+}
+
+export const WEEKEND_PAIRS = ['BTCUSD', 'XAGUSD', 'XAUUSD'];
 
 export const APPROVED_PAIRS = [
   'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD', 
   'AUDUSD', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY', 
   'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY', 'EURAUD', 
-  'EURNZD', 'GBPAUD', 'XAUUSD', 'XAGUSD', 'BTCUSD'
+  'EURNZD', 'GBPAUD', 'XAUUSD', 'XAGUSD', 'BTCUSD',
+  'ETHUSD', 'SOLUSD', 'XRPUSD', 'BNBUSD', 'ADAUSD',
+  'LTCUSD', 'DOTUSD'
 ];
 
 export const PAIRS = [...APPROVED_PAIRS]; // Initialized, mutable by mode switch
@@ -135,7 +143,7 @@ export const scannerState = {
 };
 
 function getCategory(pair: string) {
-  if (pair === 'BTCUSD') return 'Crypto';
+  if (['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'BNBUSD', 'ADAUSD', 'LTCUSD', 'DOTUSD'].includes(pair)) return 'Crypto';
   if (['XAUUSD', 'XAGUSD'].includes(pair)) return 'Metals';
   if (['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'].includes(pair)) return 'Majors';
   if (['USDJPY', 'EURJPY', 'GBPJPY', 'AUDJPY', 'CHFJPY'].includes(pair)) return 'JPY Crosses';
@@ -203,23 +211,38 @@ export async function startScanner() {
         }
     }
 
+    const hasPairsChanged = PAIRS.length !== APPROVED_PAIRS.length || !PAIRS.every((val, i) => val === APPROVED_PAIRS[i]);
+    if (hasPairsChanged) {
+      PAIRS.splice(0, PAIRS.length, ...APPROVED_PAIRS);
+      currentIndex = 0;
+    }
+
     if (currentIndex === 0) {
-      if (!scannerState.stats.mode) {
-          scannerState.stats.mode = 'forex';
-      }
+      scannerState.stats.mode = isWeekend() ? 'crypto' : 'forex';
       
-      const targetCount = APPROVED_PAIRS.length;
-      if (PAIRS.length !== targetCount) {
-         PAIRS.splice(0, PAIRS.length, ...APPROVED_PAIRS);
-      }
-      
-      scannerState.stats.totalAssetsConfigured = targetCount;
+      scannerState.stats.totalAssetsConfigured = APPROVED_PAIRS.length;
       scannerState.stats.activeAssets = PAIRS.length;
       scannerState.stats.totalScannedAssets = PAIRS.length;
     }
 
     const startTime = Date.now();
     const pair = PAIRS[currentIndex];
+
+    // On weekends, skip forex pairs to save API credits and reduce latency
+    const isCryptoOrMetal = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'BNBUSD', 'ADAUSD', 'LTCUSD', 'DOTUSD', 'XAUUSD', 'XAGUSD'].includes(pair);
+    if (isWeekend() && !isCryptoOrMetal) {
+       currentIndex++;
+       if (currentIndex >= PAIRS.length) {
+         currentIndex = 0;
+         scannerState.stats.scanCycles++;
+         scannerState.stats.lastScanDuration = Date.now() - (scannerState.stats.lastScanTime || startTime);
+         scannerState.stats.totalScanDurationMs += scannerState.stats.lastScanDuration;
+         scannerState.stats.lastScanTime = Date.now();
+       }
+       setTimeout(runNextCycle, 50);
+       return;
+    }
+
     updatePairStatus(pair, 'scanning');
     
     try {

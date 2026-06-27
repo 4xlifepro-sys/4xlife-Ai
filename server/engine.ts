@@ -17,9 +17,12 @@ export const rejectionStats = {
 };
 
 export function getPipMultiplier(pair: string) {
-  if (pair.includes('JPY') || pair.includes('XAG')) return 0.01;
+  if (pair.includes('JPY')) return 0.01;
   if (pair.includes('XAU')) return 0.1;
-  if (pair === 'BTCUSD') return 1.0;
+  if (pair.includes('XAG')) return 0.01;
+  if (['BTCUSD','ETHUSD','SOLUSD',
+       'XRPUSD','BNBUSD','ADAUSD',
+       'LTCUSD','DOTUSD'].includes(pair)) return 1.0;
   return 0.0001;
 }
 
@@ -192,7 +195,9 @@ export function detectTrendMomentumScannerV5(pair: string, htfRaw: Candle[], set
     'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD',
     'AUDUSD', 'NZDUSD', 'EURGBP', 'EURJPY', 'GBPJPY',
     'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY', 'EURAUD',
-    'EURNZD', 'GBPAUD', 'XAUUSD', 'XAGUSD', 'BTCUSD'
+    'EURNZD', 'GBPAUD', 'XAUUSD', 'XAGUSD', 'BTCUSD',
+    'ETHUSD', 'SOLUSD', 'XRPUSD', 'BNBUSD', 'ADAUSD',
+    'LTCUSD', 'DOTUSD'
   ];
 
   if (!APPROVED_PAIRS.includes(pair)) {
@@ -261,7 +266,7 @@ export function detectTrendMomentumScannerV5(pair: string, htfRaw: Candle[], set
   const momentumScore = currentCandleRange > 0 ? Math.min(100, Math.round((body / currentCandleRange) * 100)) : 0;
 
   const pipsMultiplier = getPipMultiplier(pair);
-  const isCrypto = pair === 'BTCUSD';
+  const isCrypto = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'BNBUSD', 'ADAUSD', 'LTCUSD', 'DOTUSD'].includes(pair);
   const isVolatileForex = pair.includes('GBP') || pair.includes('JPY') || pair.includes('NZD') || pair.includes('CAD');
   
   let atrThreshold = 0;
