@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Home as HomeIcon, User, Share2, Sparkles, Cpu, LifeBuoy, Activity, LogOut, Shield, MoreVertical } from 'lucide-react';
+import { LayoutDashboard, Home as HomeIcon, User, Share2, Sparkles, Cpu, LifeBuoy, Activity, LogOut, Shield, MoreVertical, Menu, X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -39,6 +39,44 @@ function GlobalLayout() {
   const isAuthPage = location.pathname.startsWith('/login') || location.pathname.startsWith('/signup') || location.pathname.startsWith('/forgot-password') || location.pathname.startsWith('/reset-password');
   
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforePrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforePrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforePrompt);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
+  const installApp = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const promise = deferredPrompt.userChoice || deferredPrompt.waitForUserChoice;
+      if (promise) {
+        promise.then(() => {
+          setDeferredPrompt(null);
+        });
+      } else {
+        setDeferredPrompt(null);
+      }
+    }
+  };
 
   // Close more menu on click outside or navigation
   useEffect(() => {
@@ -54,6 +92,7 @@ function GlobalLayout() {
 
   useEffect(() => {
     setIsMoreMenuOpen(false);
+    setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
   if (loading) {
@@ -63,6 +102,19 @@ function GlobalLayout() {
   const primaryNavItems = user ? [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/today-signals', label: 'TODAY\'S SIGNALS', icon: Activity },
+    { path: '/plans', label: 'Plans', icon: Sparkles },
+    { path: '/ai-coach', label: 'AI Coach', icon: Cpu },
+    { path: '/account', label: 'Account', icon: User },
+    ...(isAdmin ? [{ path: '/admin', label: 'Admin', icon: Shield }] : []),
+  ] : [
+    { path: '/', label: 'Home', icon: HomeIcon },
+    { path: '/plans', label: 'Plans', icon: Sparkles },
+    { path: '/support', label: 'Support', icon: LifeBuoy },
+  ];
+
+  const mobileNavItems = user ? [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/today-signals', label: "Today's Signals", icon: Activity },
     { path: '/plans', label: 'Plans', icon: Sparkles },
     { path: '/ai-coach', label: 'AI Coach', icon: Cpu },
     { path: '/account', label: 'Account', icon: User },
@@ -103,7 +155,8 @@ function GlobalLayout() {
               <Logo size={32} showText={true} />
             </Link>
             
-            <div className="flex flex-1 justify-end min-w-0">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex flex-1 justify-end min-w-0">
               <div className="flex items-center pr-4 space-x-1 sm:space-x-4">
                 {primaryNavItems.map((item) => (
                   <Link
@@ -193,8 +246,109 @@ function GlobalLayout() {
                 )}
               </div>
             </div>
+
+            {/* Mobile Navigation controls */}
+            <div className="flex md:hidden items-center gap-3">
+              {user && <NotificationDropdown />}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 text-[#8A95A5] hover:text-white hover:bg-white/5 rounded-lg transition-colors focus:outline-none"
+                aria-label="Toggle Menu"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6 shrink-0" />
+                ) : (
+                  <Menu className="w-6 h-6 shrink-0" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Mobile Menu Dropdown Overlay */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 right-0 h-[calc(100vh-4rem)] z-40 bg-[#0A0D12]/98 backdrop-blur-lg border-t border-[#202735] flex flex-col justify-between overflow-y-auto p-6 pb-24 animate-in fade-in slide-in-from-top-4 duration-200">
+            <div className="space-y-4">
+              {/* User Profile Info on mobile if logged in */}
+              {user && (
+                <div className="pb-4 border-b border-[#202735] mb-4">
+                  <div className="text-sm font-bold text-white">
+                    {user.user_metadata?.full_name || 'Trader'}
+                  </div>
+                  <div className="text-xs text-[#5D6B80]">{user.email}</div>
+                </div>
+              )}
+
+              <div className="flex flex-col space-y-2">
+                {mobileNavItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-semibold transition-all duration-200",
+                      location.pathname === item.path
+                        ? "bg-blue-600/10 text-blue-400 border border-blue-500/20"
+                        : "text-[#8A95A5] hover:bg-[#11141A] hover:text-white border border-transparent"
+                    )}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Auth buttons for logged out users on mobile */}
+              {!user && (
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#202735] mt-4">
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-4 py-3 text-center text-sm font-bold text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all uppercase border border-[#202735]"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/signup"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-4 py-3 text-center bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold tracking-wide rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-all uppercase"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4 pt-6 mt-6 border-t border-[#202735]/40">
+              {/* Install Button inside Hamburger Menu */}
+              {deferredPrompt && (
+                <button
+                  onClick={() => {
+                    installApp();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all uppercase text-sm tracking-wide border border-emerald-500/30 cursor-pointer"
+                >
+                  <span>📲 Install 4xLifeAI App</span>
+                </button>
+              )}
+
+              {/* Log out on mobile if logged in */}
+              {user && (
+                <button
+                  onClick={() => {
+                    signOut();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 font-bold rounded-xl transition-all uppercase text-sm tracking-wide border border-red-500/10 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="flex-1 flex flex-col">

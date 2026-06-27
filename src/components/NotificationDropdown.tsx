@@ -30,7 +30,8 @@ export default function NotificationDropdown() {
 
     fetchNotifications();
 
-    const channel = supabase.channel('user_notifications')
+    const channelId = `user_notifications_${user.id}_${Math.random().toString(36).substring(2, 11)}`;
+    const channel = supabase.channel(channelId)
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 
