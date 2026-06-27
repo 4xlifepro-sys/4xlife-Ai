@@ -54,7 +54,11 @@ export default function Signup() {
       if (error) throw error;
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up');
+      let msg = err.message || 'Failed to sign up';
+      if (msg === '{}' || msg.includes('AuthRetryableFetchError')) {
+         msg = 'Database error during signup (Internal Server Error 500). Please verify your Supabase on_auth_user_created database trigger handles column names correctly (e.g. check "admin_id" vs "user_id" in admin_audit_logs).';
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
