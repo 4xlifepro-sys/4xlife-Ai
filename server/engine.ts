@@ -270,11 +270,11 @@ export function detectTrendMomentumScannerV5(pair: string, htfRaw: Candle[], set
   const isVolatileForex = pair.includes('GBP') || pair.includes('JPY') || pair.includes('NZD') || pair.includes('CAD');
   
   let atrThreshold = 0;
-  if (pair === 'XAUUSD') atrThreshold = 1.5;
-  else if (pair === 'XAGUSD') atrThreshold = 0.08;
-  else if (isCrypto) atrThreshold = current5M.close * 0.0035;
-  else if (isVolatileForex) atrThreshold = 4 * pipsMultiplier;
-  else atrThreshold = 2 * pipsMultiplier;
+  if (pair === 'XAUUSD') atrThreshold = 0.20;
+  else if (pair === 'XAGUSD') atrThreshold = 0.01;
+  else if (isCrypto) atrThreshold = current5M.close * 0.0008;
+  else if (isVolatileForex) atrThreshold = 2 * pipsMultiplier;
+  else atrThreshold = 1 * pipsMultiplier;
 
   const atrScore = atrThreshold > 0 ? Math.min(100, Math.round((currentAtr / atrThreshold) * 50)) : 0;
   
@@ -350,14 +350,14 @@ export function detectTrendMomentumScannerV5(pair: string, htfRaw: Candle[], set
 
   // Remove the old duplicate condition since regime handles it
   let atrValid = false;
-  if (pair === 'XAUUSD') atrValid = currentAtr >= 1.5;
-  else if (pair === 'XAGUSD') atrValid = currentAtr >= 0.08;
+  if (pair === 'XAUUSD') atrValid = currentAtr >= 0.20;
+  else if (pair === 'XAGUSD') atrValid = currentAtr >= 0.01;
   else if (isCrypto) {
       const percentageAtr = (currentAtr / current5M.close) * 100;
-      atrValid = percentageAtr >= 0.35;
+      atrValid = percentageAtr >= 0.08;
   }
-  else if (isVolatileForex) atrValid = (currentAtr / pipsMultiplier) >= 4;
-  else atrValid = (currentAtr / pipsMultiplier) >= 2;
+  else if (isVolatileForex) atrValid = (currentAtr / pipsMultiplier) >= 2;
+  else atrValid = (currentAtr / pipsMultiplier) >= 1;
 
   if (!atrValid && !hardReject) {
       hardReject = 'REJECT_ATR_LOW';

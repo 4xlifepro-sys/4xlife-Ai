@@ -39,8 +39,20 @@ function RelativeTime({ timestamp }: { timestamp: string | number | null | undef
 }
 
 const isWeekend = () => {
-  const day = new Date().getUTCDay();
-  return day === 0 || day === 6;
+  const now = new Date();
+  const day = now.getUTCDay();
+  const hours = now.getUTCHours();
+  
+  if (day === 5) { // Friday after 22:00 UTC
+    return hours >= 22;
+  }
+  if (day === 6) { // Saturday (all day)
+    return true;
+  }
+  if (day === 0) { // Sunday before 22:00 UTC
+    return hours < 22;
+  }
+  return false;
 };
 
 export default function Dashboard() {
